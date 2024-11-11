@@ -29,7 +29,7 @@ def send_message():
 def setup_gui():
     global chat_box, msg_entry
     window = Tk()
-    window.title("Chat Client Version 1.0")
+    window.title("CMSC 137 Lab 5 Activity")
 
     chat_box = Text(window, height=15, width=50)
     chat_box.pack()
