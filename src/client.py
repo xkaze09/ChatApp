@@ -10,9 +10,8 @@ client_socket = None
 server_ip = None
 server_port = None
 username = None
-online_users = []
 status_value_label = None
-online_users_label = None
+online_users_label = None  # New variable for the Online Users label
 canvas = None
 scrollable_frame = None
 msg_entry = None
@@ -38,14 +37,17 @@ def setup_gui(root, client_ip, client_port):
     # Display client and server info in the header
     create_label(header_frame, "Your IP Address:", client_ip, row=0)
     create_label(header_frame, "Your Port Number:", client_port, row=1)
-    create_label(header_frame, "Connected with:", f"{server_ip}:{server_port}", row=3)
-    status_value_label = create_label(header_frame, "Status:", "Connecting...", row=2, status=True)
+    create_label(header_frame, "Your Name:", username, row=2)
+    create_label(header_frame, "Connected with:", f"{server_ip}:{server_port}", row=4)
+    status_value_label = create_label(header_frame, "Status:", "Connecting...", row=3, status=True)
 
-    # Online users frame (static, above the chat box)
-    online_users_frame = tk.Frame(root, bg="#1f2a44", pady=5)
-    online_users_frame.pack(fill="x", padx=10, pady=(0, 10))
-    online_users_label = tk.Label(online_users_frame, text="Online Users: ", font=text_font, bg="#1f2a44", fg="lightgreen")
-    online_users_label.pack(anchor="w")
+    # Online Users frame
+    online_users_frame = tk.LabelFrame(root, text="Online Users", font=("Helvetica", 10), bg="#1f2a44", fg="lightgreen", labelanchor="n")
+    online_users_frame.pack(fill='x', padx=10, pady=10)
+
+    # Online Users label for displaying comma-separated users
+    online_users_label = tk.Label(online_users_frame, text="", font=("Helvetica", 10), bg="#3b4b67", fg="white", padx=10, pady=5, anchor="w", justify="left", wraplength=300)
+    online_users_label.pack(fill="x")
 
     # Chat display area (scrollable)
     chat_frame = tk.Frame(root, bg="#263859")
@@ -87,9 +89,8 @@ def create_label(frame, label_text, value_text, row, status=False):
 
 # Update the online users list display
 def update_online_users(users):
-    global online_users, online_users_label
-    online_users = users
-    users_text = "Online Users: " + ", ".join(online_users)
+    global online_users_label
+    users_text = ", ".join(users)
     online_users_label.config(text=users_text)
 
 # Display a message in the chat display area, aligning based on sender
@@ -97,11 +98,17 @@ def display_message(message, sender):
     global canvas, scrollable_frame
 
     message_frame = tk.Frame(scrollable_frame, bg="#263859", pady=5)
+
+    timestamp_label = tk.Label(message_frame, text=format_message(sender, ""), bg="#263859", fg="lightgray", font=("Helvetica", 8, "italic"))
+    timestamp_label.pack(anchor="e" if sender == "System" else "w")
+
     if sender == username:  # User's own message
-        tk.Label(message_frame, text=message, bg="#3b4b67", fg="white", font=("Helvetica", 10), padx=10, pady=5, wraplength=300, anchor="e", justify="right").pack(anchor="e")
+        message_label = tk.Label(message_frame, text=message, bg="#3b4b67", fg="white", font=("Helvetica", 10), padx=10, pady=5, wraplength=300, anchor="e", justify="right")
+        message_label.pack(anchor="e")
         message_frame.pack(anchor="e", fill="x", padx=10, pady=5)
     else:  # Message from others
-        tk.Label(message_frame, text=message, bg="#4c5c77", fg="white", font=("Helvetica", 10), padx=10, pady=5, wraplength=300, anchor="w", justify="left").pack(anchor="w")
+        message_label = tk.Label(message_frame, text=message, bg="#4c5c77", fg="white", font=("Helvetica", 10), padx=10, pady=5, wraplength=300, anchor="w", justify="left")
+        message_label.pack(anchor="w")
         message_frame.pack(anchor="w", fill="x", padx=10, pady=5)
 
     canvas.update_idletasks()
@@ -130,9 +137,9 @@ def receive_messages():
     while True:
         try:
             message = client_socket.recv(1024).decode('utf-8')
-            if message.startswith("ONLINE_USERS:"):
-                # Update the online users list
-                users = message.split(":")[1].split(",")
+            # Treat the message as online users list if it’s comma-separated usernames only
+            if all(part.isalpha() or part.isnumeric() for part in message.split(",")):
+                users = message.split(",")
                 update_online_users(users)
             else:
                 # Display regular message
@@ -143,6 +150,7 @@ def receive_messages():
             display_message("Connection lost. Attempting to reconnect...", "System")
             attempt_reconnect()
             break
+
 
 # Function to attempt reconnection
 def attempt_reconnect():
