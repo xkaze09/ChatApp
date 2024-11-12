@@ -68,7 +68,7 @@ def start_server(ip, port):
         client_socket, addr = server_socket.accept()
         threading.Thread(target=handle_client, args=(client_socket,)).start()
 
-# Function to send server messages
+''' Send server messages '''
 def send_server_message(event=None):
     message = msg_text.get("1.0", tk.END).strip()
     if message:
@@ -76,31 +76,16 @@ def send_server_message(event=None):
         broadcast(f"Server: {message}")
         msg_text.delete("1.0", tk.END)
 
-# Function to display messages in the GUI
+''' Display messages in the GUI '''
 def display_message(message, sender):
     message_frame = tk.Frame(scrollable_frame, bg="#263859", pady=2)
     
-    timestamp_label = tk.Label(
-        message_frame,
-        text=add_timestamp(),
-        bg="#263859",
-        fg="lightgray",
-        font=("Helvetica", 8, "italic")
+    timestamp_label = tk.Label(message_frame, text=add_timestamp(), bg="#263859",fg="lightgray",font=("Helvetica", 8, "italic")
     )
     timestamp_label.pack(anchor="e" if sender == "Server" else "w")
 
     if sender == "Server":
-        message_label = tk.Label(
-            message_frame,
-            text=message,
-            bg="#3b4b67",
-            fg="white",
-            font=("Helvetica", 10),
-            padx=10,
-            pady=5,
-            anchor="e",
-            justify="right"
-        )
+        message_label = tk.Label(message_frame,text=message,bg="#3b4b67",fg="white",font=("Helvetica", 10),padx=10,pady=5,anchor="e",justify="right")
         message_label.pack(anchor="e")
         message_frame.pack(anchor="e", fill="x", pady=5)
     else:
@@ -121,19 +106,19 @@ def display_message(message, sender):
     canvas.update_idletasks()
     canvas.yview_moveto(1.0)
 
-# Enable scroll with mouse wheel
+''' Enable scroll with mouse wheel '''
 def bind_mousewheel(event):
     canvas.bind_all("<MouseWheel>", lambda e: canvas.yview_scroll(int(-1 * (e.delta / 120)), "units"))
 
 def unbind_mousewheel(event):
     canvas.unbind_all("<MouseWheel>")
 
-# Update online users in the GUI
+''' Update online users in the GUI '''
 def update_online_users():
     users_text = "Online Users: " + ", ".join(clients.values())
     online_users_label.config(text=users_text, fg="lightgreen")
 
-# Setting up the server GUI
+''' Setting up the server GUI '''
 def setup_gui(ip, port):
     global canvas, scrollable_frame, msg_text, online_users_label
 
@@ -178,13 +163,13 @@ def setup_gui(ip, port):
     canvas.pack(side="left", fill="both", expand=True)
     scrollbar.pack(side="right", fill="y")
 
-    # Message entry box and send button with improved styling
+    # Message entry box
     msg_text = tk.Text(window, width=50, height=1, font=("Helvetica", 11), bg="#3b4b67", fg="white", insertbackground="white", wrap="word", relief="flat", pady=4, padx=4)
     msg_text.pack(side='left', padx=(10, 0), pady=0)
     msg_text.bind("<Return>", lambda event: send_server_message(event))
     msg_text.bind("<Shift-Return>", lambda event: msg_text.insert(tk.END, "\n"))
 
-   # Send button styling and hover effect
+   # Send button
     send_button = tk.Button(
         window, text="Send", command=send_server_message,
         font=("Helvetica", 10, "bold"), bg="#4c5c77", fg="white",
