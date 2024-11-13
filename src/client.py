@@ -16,12 +16,11 @@ canvas = None
 scrollable_frame = None
 msg_entry = None
 
-# Function to format message with a timestamp
-def format_message(sender, message):
-    timestamp = datetime.now().strftime('%b %d, %Y - %I:%M %p')
-    return f"[{timestamp}] {sender}: {message}"
+# Function to add a timestamp to messages
+def add_timestamp():
+    return datetime.now().strftime('%b %d, %Y - %I:%M %p')
 
-# Setup the chat client GUI
+# Setup the chat client GUI 
 def setup_gui(root, client_ip, client_port):
     global status_value_label, online_users_label, canvas, scrollable_frame, msg_entry
     
@@ -38,8 +37,8 @@ def setup_gui(root, client_ip, client_port):
     create_label(header_frame, "Your IP Address:", client_ip, row=0)
     create_label(header_frame, "Your Port Number:", client_port, row=1)
     create_label(header_frame, "Your Name:", username, row=2)
-    create_label(header_frame, "Connected with:", f"{server_ip}:{server_port}", row=4)
-    status_value_label = create_label(header_frame, "Status:", "Connecting...", row=3, status=True)
+    create_label(header_frame, "Connected with:", f"{server_ip}:{server_port}", row=3)
+    status_value_label = create_label(header_frame, "Status:", "Connecting...", row=4, status=True)
 
     # Online Users frame
     online_users_frame = tk.LabelFrame(root, text="Online Users", font=("Helvetica", 10), bg="#1f2a44", fg="lightgreen", labelanchor="n")
@@ -53,7 +52,8 @@ def setup_gui(root, client_ip, client_port):
     chat_frame = tk.Frame(root, bg="#263859")
     chat_frame.pack(padx=10, pady=10, fill="both", expand=True)
 
-    canvas = tk.Canvas(chat_frame, bg="#263859")
+    # Canvas and Scrollbar setup for scrollable chat
+    canvas = tk.Canvas(chat_frame, bg="#263859", borderwidth=0, highlightthickness=0)
     scrollbar = tk.Scrollbar(chat_frame, orient="vertical", command=canvas.yview)
     scrollable_frame = tk.Frame(canvas, bg="#263859")
 
@@ -94,20 +94,51 @@ def update_online_users(users):
     online_users_label.config(text=users_text)
 
 # Display a message in the chat display area, aligning based on sender
+# Display a message in the chat display area, aligning based on sender
 def display_message(message, sender):
     global canvas, scrollable_frame
 
     message_frame = tk.Frame(scrollable_frame, bg="#263859", pady=5)
 
-    timestamp_label = tk.Label(message_frame, text=format_message(sender, ""), bg="#263859", fg="lightgray", font=("Helvetica", 8, "italic"))
+    timestamp_label = tk.Label(
+        message_frame, 
+        text=add_timestamp(), 
+        bg="#263859", 
+        fg="lightgray", 
+        font=("Helvetica", 8, "italic")
+    )
     timestamp_label.pack(anchor="e" if sender == "System" else "w")
 
+    wrap_length = 300  
+
     if sender == username:  # User's own message
-        message_label = tk.Label(message_frame, text=message, bg="#3b4b67", fg="white", font=("Helvetica", 10), padx=10, pady=5, wraplength=300, anchor="e", justify="right")
+        message_label = tk.Label(
+            message_frame, 
+            text=message, 
+            bg="#3b4b67", 
+            fg="white", 
+            font=("Helvetica", 10), 
+            padx=10, 
+            pady=5, 
+            wraplength=wrap_length,  # Set wrap length for text
+            anchor="e", 
+            justify="right"
+        )
         message_label.pack(anchor="e")
         message_frame.pack(anchor="e", fill="x", padx=10, pady=5)
     else:  # Message from others
-        message_label = tk.Label(message_frame, text=message, bg="#4c5c77", fg="white", font=("Helvetica", 10), padx=10, pady=5, wraplength=300, anchor="w", justify="left")
+        message_label = tk.Label(
+            message_frame, 
+            text=message, 
+            bg="#4c5c77", 
+            fg="white", 
+            font=("Helvetica", 10), 
+            padx=10, 
+            pady=5, 
+            wraplength=wrap_length,  # Set wrap length for text
+            anchor="w", 
+            justify="left"
+        )
         message_label.pack(anchor="w")
         message_frame.pack(anchor="w", fill="x", padx=10, pady=5)
 
@@ -119,7 +150,7 @@ def send_message():
     global msg_entry, client_socket
     message = msg_entry.get()
     if message:
-        formatted_message = format_message(username, message)
+        formatted_message = f"{username}: {message}"
         display_message(formatted_message, username)
         try:
             client_socket.send(message.encode('utf-8'))
