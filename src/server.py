@@ -171,6 +171,7 @@ def setup_gui(ip, port):
     threading.Thread(target=start_server, args=(ip, port), daemon=True).start()
     window.mainloop()
 
+''' Main setup '''
 if __name__ == "__main__":
     root = tk.Tk()
     root.withdraw()

@@ -11,16 +11,16 @@ server_ip = None
 server_port = None
 username = None
 status_value_label = None
-online_users_label = None  # New variable for the Online Users label
+online_users_label = None
 canvas = None
 scrollable_frame = None
 msg_entry = None
 
-# Function to add a timestamp to messages
+''' Add a timestamp to messages '''
 def add_timestamp():
     return datetime.now().strftime('%b %d, %Y - %I:%M %p')
 
-# Setup the chat client GUI 
+''' Setup the chat client GUI '''
 def setup_gui(root, client_ip, client_port):
     global status_value_label, online_users_label, canvas, scrollable_frame, msg_entry
     
@@ -40,15 +40,14 @@ def setup_gui(root, client_ip, client_port):
     create_label(header_frame, "Connected with:", f"{server_ip}:{server_port}", row=3)
     status_value_label = create_label(header_frame, "Status:", "Connecting...", row=4, status=True)
 
-    # Online Users frame
+    # Online Users frame & labels
     online_users_frame = tk.LabelFrame(root, text="Online Users", font=("Helvetica", 10), bg="#1f2a44", fg="lightgreen", labelanchor="n")
     online_users_frame.pack(fill='x', padx=10, pady=10)
 
-    # Online Users label for displaying comma-separated users
     online_users_label = tk.Label(online_users_frame, text="", font=("Helvetica", 10), bg="#3b4b67", fg="white", padx=10, pady=5, anchor="w", justify="left", wraplength=300)
     online_users_label.pack(fill="x")
 
-    # Chat display area (scrollable)
+    # Chat display area
     chat_frame = tk.Frame(root, bg="#263859")
     chat_frame.pack(padx=10, pady=10, fill="both", expand=True)
 
@@ -73,13 +72,12 @@ def setup_gui(root, client_ip, client_port):
     msg_entry.pack(side='left', padx=(10, 0), pady=10, fill="x", expand=True)
     msg_entry.bind("<Return>", lambda e: send_message())
     
-    # Send button with styling and hover effect
     send_button = tk.Button(root, text="Send", command=send_message, font=text_font, bg="#4c5c77", fg="white", width=10, relief="flat")
     send_button.pack(side='left', padx=(10, 10), pady=10)
     send_button.bind("<Enter>", lambda e: send_button.config(bg="#596985"))
     send_button.bind("<Leave>", lambda e: send_button.config(bg="#4c5c77"))
 
-# Helper function to create labels for header information
+''' Helper function to create labels for header information '''
 def create_label(frame, label_text, value_text, row, status=False):
     text_font = font.Font(family="Helvetica", size=11)
     tk.Label(frame, text=label_text, font=text_font, bg="#1f2a44", fg="white").grid(row=row, column=0, sticky='e', padx=5, pady=2)
@@ -87,14 +85,13 @@ def create_label(frame, label_text, value_text, row, status=False):
     label.grid(row=row, column=1, sticky='w', padx=5, pady=2)
     return label if status else None
 
-# Update the online users list display
+''' Update the online users list display '''
 def update_online_users(users):
     global online_users_label
     users_text = ", ".join(users)
     online_users_label.config(text=users_text)
 
-
-# Display a message in the chat display area
+''' Display a message in the chat display area '''
 def display_message(message, sender):
     global canvas, scrollable_frame
 
@@ -111,14 +108,14 @@ def display_message(message, sender):
     )
     timestamp_label.pack(anchor="e" if sender == username else "w")  # Right-align for user's own messages
 
-    # Define common properties for message label
+    # Define common properties
     wrap_length = 300
     bg_color = "#3b4b67" if sender == username else "#4c5c77"
     anchor = "e" if sender == username else "w"
     justify = "right" if sender == username else "left"
     padx = (230, 10) if sender == username else (10, 50)  # Adjust padding for right alignment
 
-    # Create the message label with dynamic properties based on sender
+    # Create the message label based on sender
     message_label = tk.Label(
         message_frame,
         text=message,
@@ -138,7 +135,7 @@ def display_message(message, sender):
     canvas.update_idletasks()
     canvas.yview_moveto(1.0)  # Auto-scroll to the bottom
 
-# Send a message to the server and display it locally
+''' Send a message to the server and display it locally '''
 def send_message():
     global msg_entry, client_socket
     message = msg_entry.get()
@@ -151,12 +148,12 @@ def send_message():
             display_message("Message not sent. Server is offline.", "System")
         msg_entry.delete(0, tk.END)
 
-# Update the status label with connection status
+''' Update the status label with connection status '''
 def update_status(message, color):
     global status_value_label
     status_value_label.config(text=message, bg=color)
 
-# Function to handle receiving messages from the server
+''' Function to handle receiving messages from the server '''
 def receive_messages():
     while True:
         try:
@@ -176,7 +173,7 @@ def receive_messages():
             break
 
 
-# Function to attempt reconnection
+''' Function to attempt reconnection '''
 def attempt_reconnect():
     global client_socket
     while True:
@@ -193,7 +190,7 @@ def attempt_reconnect():
             update_status("Reconnecting...", "orange")
             continue
 
-# Initial connection setup
+''' Initial connection setup '''
 def initial_connect():
     global client_socket
     while True:
@@ -205,7 +202,7 @@ def initial_connect():
             print("Server is offline. Attempting to reconnect...")
             time.sleep(5)
 
-# Main setup
+''' Main setup '''
 if __name__ == "__main__":
     # Prompt for server IP, port, and username
     root = tk.Tk()
@@ -219,18 +216,18 @@ if __name__ == "__main__":
         exit()  # Exit if "Cancel" is clicked on the IP prompt
     
     server_port = simpledialog.askinteger("Port", "Enter Port Number of the server:", initialvalue=12345)
-    if server_port is None:  # Exit if "Cancel" is pressed
+    if server_port is None:  
         exit()
     if server_port is None:
         root.destroy()
-        exit()  # Exit if "Cancel" is clicked on the Port prompt
+        exit()  
     
     username = simpledialog.askstring("Username", "Please enter a username:")
-    if username is None:  # Exit if "Cancel" is pressed
+    if username is None:  
         exit()
     if username is None:
         root.destroy()
-        exit()  # Exit if "Cancel" is clicked on the Username prompt
+        exit()  
 
     root.destroy()
 
