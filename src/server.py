@@ -71,28 +71,41 @@ def update_online_users():
 def display_message(message, sender):
     message_frame = tk.Frame(scrollable_frame, bg="#263859", pady=2)
     
-    timestamp_label = tk.Label(message_frame, text=add_timestamp(), bg="#263859", fg="lightgray", font=("Helvetica", 8, "italic"))
+    # Timestamp for each message
+    timestamp_label = tk.Label(
+        message_frame, 
+        text=add_timestamp(), 
+        bg="#263859", 
+        fg="lightgray", 
+        font=("Helvetica", 8, "italic")
+    )
     timestamp_label.pack(anchor="e" if sender == "Server" else "w")
 
-    if sender == "Server":
-        message_label = tk.Label(message_frame, text=message, bg="#3b4b67", fg="white", font=("Helvetica", 10), padx=10, pady=5, anchor="e", justify="right")
-        message_label.pack(anchor="e")
-        message_frame.pack(anchor="e", fill="x", pady=5)
-    else:
-        message_label = tk.Label(
-            message_frame,
-            text=message,
-            bg="#4c5c77",
-            fg="white",
-            font=("Helvetica", 10),
-            padx=10,
-            pady=5,
-            anchor="w",
-            justify="left"
-        )
-        message_label.pack(anchor="w")
-        message_frame.pack(anchor="w", fill="x", padx=(10, 230), pady=5)
+    # Set a wrap length for the message to limit the width of each line in the label
+    wrap_length = 300  # Adjust this to your preferred width in pixels
 
+    # Determine background color, anchor, and padding based on sender
+    bg_color = "#3b4b67" if sender == "Server" else "#4c5c77"
+    anchor = "e" if sender == "Server" else "w"
+    justify = "right" if sender == "Server" else "left"
+    padx = (230, 10) if sender == "Server" else (10, 230)
+
+    message_label = tk.Label(
+        message_frame,
+        text=message,
+        bg=bg_color,
+        fg="white",
+        font=("Helvetica", 10),
+        padx=10,
+        pady=5,
+        wraplength=wrap_length,
+        anchor=anchor,
+        justify=justify
+    )
+    message_label.pack(anchor=anchor)
+    message_frame.pack(anchor=anchor, fill="x", padx=padx, pady=5)
+
+    # Update the canvas to scroll to the bottom for each new message
     canvas.update_idletasks()
     canvas.yview_moveto(1.0)
 
