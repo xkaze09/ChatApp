@@ -93,55 +93,48 @@ def update_online_users(users):
     users_text = ", ".join(users)
     online_users_label.config(text=users_text)
 
-# Display a message in the chat display area, aligning based on sender
-# Display a message in the chat display area, aligning based on sender
+
+# Display a message in the chat display area
 def display_message(message, sender):
     global canvas, scrollable_frame
 
+    # Create message frame in the scrollable area
     message_frame = tk.Frame(scrollable_frame, bg="#263859", pady=5)
-
+    
+    # Display timestamp label with alignment based on sender
     timestamp_label = tk.Label(
-        message_frame, 
-        text=add_timestamp(), 
-        bg="#263859", 
-        fg="lightgray", 
+        message_frame,
+        text=add_timestamp(),
+        bg="#263859",
+        fg="lightgray",
         font=("Helvetica", 8, "italic")
     )
-    timestamp_label.pack(anchor="e" if sender == "System" else "w")
+    timestamp_label.pack(anchor="e" if sender == username else "w")  # Right-align for user's own messages
 
-    wrap_length = 300  
+    # Define common properties for message label
+    wrap_length = 300
+    bg_color = "#3b4b67" if sender == username else "#4c5c77"
+    anchor = "e" if sender == username else "w"
+    justify = "right" if sender == username else "left"
+    padx = (230, 10) if sender == username else (10, 50)  # Adjust padding for right alignment
 
-    if sender == username:  # User's own message
-        message_label = tk.Label(
-            message_frame, 
-            text=message, 
-            bg="#3b4b67", 
-            fg="white", 
-            font=("Helvetica", 10), 
-            padx=10, 
-            pady=5, 
-            wraplength=wrap_length,  # Set wrap length for text
-            anchor="e", 
-            justify="right"
-        )
-        message_label.pack(anchor="e")
-        message_frame.pack(anchor="e", fill="x", padx=10, pady=5)
-    else:  # Message from others
-        message_label = tk.Label(
-            message_frame, 
-            text=message, 
-            bg="#4c5c77", 
-            fg="white", 
-            font=("Helvetica", 10), 
-            padx=10, 
-            pady=5, 
-            wraplength=wrap_length,  # Set wrap length for text
-            anchor="w", 
-            justify="left"
-        )
-        message_label.pack(anchor="w")
-        message_frame.pack(anchor="w", fill="x", padx=10, pady=5)
+    # Create the message label with dynamic properties based on sender
+    message_label = tk.Label(
+        message_frame,
+        text=message,
+        bg=bg_color,
+        fg="white",
+        font=("Helvetica", 10),
+        padx=10,
+        pady=5,
+        wraplength=wrap_length,
+        anchor=anchor,
+        justify=justify
+    )
+    message_label.pack(anchor=anchor)
+    message_frame.pack(anchor=anchor, fill="x", padx=padx, pady=5)
 
+    # Update the canvas to scroll to the bottom for each new message
     canvas.update_idletasks()
     canvas.yview_moveto(1.0)  # Auto-scroll to the bottom
 
@@ -217,15 +210,28 @@ if __name__ == "__main__":
     # Prompt for server IP, port, and username
     root = tk.Tk()
     root.withdraw()
+    
     server_ip = simpledialog.askstring("Server IP", "Enter IP Address of the server:", initialvalue="127.0.0.1")
     if server_ip is None:  # Exit if "Cancel" is pressed
         exit()
+    if server_ip is None:
+        root.destroy()
+        exit()  # Exit if "Cancel" is clicked on the IP prompt
+    
     server_port = simpledialog.askinteger("Port", "Enter Port Number of the server:", initialvalue=12345)
     if server_port is None:  # Exit if "Cancel" is pressed
         exit()
+    if server_port is None:
+        root.destroy()
+        exit()  # Exit if "Cancel" is clicked on the Port prompt
+    
     username = simpledialog.askstring("Username", "Please enter a username:")
     if username is None:  # Exit if "Cancel" is pressed
         exit()
+    if username is None:
+        root.destroy()
+        exit()  # Exit if "Cancel" is clicked on the Username prompt
+
     root.destroy()
 
     # Attempt initial connection
