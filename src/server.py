@@ -175,7 +175,11 @@ if __name__ == "__main__":
     root = tk.Tk()
     root.withdraw()
     ip = simpledialog.askstring("Server IP", "Enter IP Address for the server:", initialvalue="127.0.0.1")
+    if ip is None:  # Exit if "Cancel" is pressed
+        exit()
     port = simpledialog.askinteger("Port", "Enter Port Number for the server:", initialvalue=12345)
+    if port is None:  # Exit if "Cancel" is pressed
+        exit()
     root.destroy()
 
     setup_gui(ip, port)
