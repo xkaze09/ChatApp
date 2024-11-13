@@ -210,9 +210,22 @@ if __name__ == "__main__":
     # Prompt for server IP, port, and username
     root = tk.Tk()
     root.withdraw()
+    
     server_ip = simpledialog.askstring("Server IP", "Enter IP Address of the server:", initialvalue="127.0.0.1")
+    if server_ip is None:
+        root.destroy()
+        exit()  # Exit if "Cancel" is clicked on the IP prompt
+    
     server_port = simpledialog.askinteger("Port", "Enter Port Number of the server:", initialvalue=12345)
+    if server_port is None:
+        root.destroy()
+        exit()  # Exit if "Cancel" is clicked on the Port prompt
+    
     username = simpledialog.askstring("Username", "Please enter a username:")
+    if username is None:
+        root.destroy()
+        exit()  # Exit if "Cancel" is clicked on the Username prompt
+
     root.destroy()
 
     # Attempt initial connection
