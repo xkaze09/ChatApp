@@ -157,7 +157,7 @@ def setup_gui(ip, port):
     # Message entry box
     msg_text = tk.Text(window, width=50, height=1, font=("Helvetica", 11), bg="#3b4b67", fg="white", insertbackground="white", wrap="word", relief="flat", pady=4, padx=4)
     msg_text.pack(side='left', padx=(10, 0), pady=0)
-    msg_text.bind("<Return>", lambda event: send_server_message(event))
+    msg_text.bind("<Return>", lambda event: send_server_message())
     msg_text.bind("<Shift-Return>", lambda event: msg_text.insert(tk.END, "\n"))
 
     # Send button
