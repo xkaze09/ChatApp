@@ -32,7 +32,6 @@ def broadcast(message, sender_socket=None):
                 client.close()
                 del clients[client] # Remove disconnected clients
 
-
 # CLIENT HANDLER FUNCTIONS
 def handle_client(client_socket):
     ''' Handles communication with a connected client '''
