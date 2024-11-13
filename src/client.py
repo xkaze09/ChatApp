@@ -1,3 +1,12 @@
+'''
+Authors: Kristina Celis & Christian Salinas
+
+Description: client.py implements the client-side functionality
+of the chat app. It allows user to connect to a chat server,
+send and receive messages, and view a list of online users.
+'''
+
+# IMPORTS
 import socket
 import threading
 import time
@@ -5,7 +14,7 @@ from datetime import datetime
 import tkinter as tk
 from tkinter import font, simpledialog
 
-# Global variables for server IP, port, and username
+# GLOBALS (avoids multiple,repetitive parameters)
 client_socket = None
 server_ip = None
 server_port = None
@@ -16,12 +25,33 @@ canvas = None
 scrollable_frame = None
 msg_entry = None
 
-''' Add a timestamp to messages '''
+# UTILITY FUNCTIONS
 def add_timestamp():
+    ''' Add a timestamp to messages '''
     return datetime.now().strftime('%b %d, %Y - %I:%M %p')
 
-''' Setup the chat client GUI '''
+def create_label(frame, label_text, value_text, row, status=False):
+    ''' Create labels for header information '''
+    text_font = font.Font(family="Helvetica", size=11)
+    tk.Label(frame, text=label_text, font=text_font, bg="#1f2a44", fg="white").grid(row=row, column=0, sticky='e', padx=5, pady=2)
+    label = tk.Label(frame, text=value_text, font=text_font, bg="#3b4b67", fg="white", width=20, anchor='w')
+    label.grid(row=row, column=1, sticky='w', padx=5, pady=2)
+    return label if status else None
+
+def update_online_users(users):
+    ''' Update the online users list display '''
+    global online_users_label
+    users_text = ", ".join(users)
+    online_users_label.config(text=users_text)
+
+def update_status(message, color):
+    ''' Update the status label with connection status '''
+    global status_value_label
+    status_value_label.config(text=message, bg=color)
+
+# GUI SETUP FUNCTIONS
 def setup_gui(root, client_ip, client_port):
+    ''' Setup the chat client GUI '''
     global status_value_label, online_users_label, canvas, scrollable_frame, msg_entry
     
     text_font = font.Font(family="Helvetica", size=11)
@@ -51,15 +81,12 @@ def setup_gui(root, client_ip, client_port):
     chat_frame = tk.Frame(root, bg="#263859")
     chat_frame.pack(padx=10, pady=10, fill="both", expand=True)
 
-    # Canvas and Scrollbar setup for scrollable chat
+    # Canvas and Scrollbar setup
     canvas = tk.Canvas(chat_frame, bg="#263859", borderwidth=0, highlightthickness=0)
     scrollbar = tk.Scrollbar(chat_frame, orient="vertical", command=canvas.yview)
     scrollable_frame = tk.Frame(canvas, bg="#263859")
 
-    scrollable_frame.bind(
-        "<Configure>",
-        lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-    )
+    scrollable_frame.bind("<Configure>",lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 
     canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
     canvas.configure(yscrollcommand=scrollbar.set)
@@ -77,28 +104,14 @@ def setup_gui(root, client_ip, client_port):
     send_button.bind("<Enter>", lambda e: send_button.config(bg="#596985"))
     send_button.bind("<Leave>", lambda e: send_button.config(bg="#4c5c77"))
 
-''' Helper function to create labels for header information '''
-def create_label(frame, label_text, value_text, row, status=False):
-    text_font = font.Font(family="Helvetica", size=11)
-    tk.Label(frame, text=label_text, font=text_font, bg="#1f2a44", fg="white").grid(row=row, column=0, sticky='e', padx=5, pady=2)
-    label = tk.Label(frame, text=value_text, font=text_font, bg="#3b4b67", fg="white", width=20, anchor='w')
-    label.grid(row=row, column=1, sticky='w', padx=5, pady=2)
-    return label if status else None
-
-''' Update the online users list display '''
-def update_online_users(users):
-    global online_users_label
-    users_text = ", ".join(users)
-    online_users_label.config(text=users_text)
-
-''' Display a message in the chat display area '''
 def display_message(message, sender):
+    ''' Display a message in the chat display area '''
     global canvas, scrollable_frame
 
     # Create message frame in the scrollable area
     message_frame = tk.Frame(scrollable_frame, bg="#263859", pady=5)
     
-    # Display timestamp label with alignment based on sender
+    # Display timestamp label
     timestamp_label = tk.Label(
         message_frame,
         text=add_timestamp(),
@@ -135,8 +148,9 @@ def display_message(message, sender):
     canvas.update_idletasks()
     canvas.yview_moveto(1.0) 
 
-''' Send a message to the server and display it locally '''
+# CLIENT FUNCTIONS
 def send_message():
+    ''' Send a message to the server and display it locally '''
     global msg_entry, client_socket
     message = msg_entry.get()
     if message:
@@ -148,17 +162,12 @@ def send_message():
             display_message("Message not sent. Server is offline.", "System")
         msg_entry.delete(0, tk.END)
 
-''' Update the status label with connection status '''
-def update_status(message, color):
-    global status_value_label
-    status_value_label.config(text=message, bg=color)
-
-''' Function to handle receiving messages from the server '''
 def receive_messages():
+    ''' Handle receiving messages from the server '''
     while True:
         try:
             message = client_socket.recv(1024).decode('utf-8')
-            # Treat the message as online users list if it’s comma-separated usernames only
+            # Check if message is an online users list
             if all(part.isalpha() or part.isnumeric() for part in message.split(",")):
                 users = message.split(",")
                 update_online_users(users)
@@ -172,13 +181,13 @@ def receive_messages():
             attempt_reconnect()
             break
 
-''' Function to attempt reconnection '''
 def attempt_reconnect():
+    ''' Function to attempt reconnection '''
     global client_socket
     while True:
         try:
             time.sleep(5)  # Wait before attempting to reconnect
-            client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Create a new socket
+            client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Create a new socket for clean, stable reconnection
             client_socket.connect((server_ip, server_port))  # Try to reconnect
             client_socket.send(username.encode('utf-8'))  # Resend username after reconnecting
             update_status("Connected", "lightgreen")
@@ -189,8 +198,8 @@ def attempt_reconnect():
             update_status("Reconnecting...", "orange")
             continue
 
-''' Initial connection setup '''
 def initial_connect():
+    ''' Initial client connection setup '''
     global client_socket
     while True:
         try:
@@ -201,33 +210,24 @@ def initial_connect():
             print("Server is offline. Attempting to reconnect...")
             time.sleep(5)
 
-''' Main setup '''
+
+# PROGRAM ENTRY POINT
 if __name__ == "__main__":
-    # Prompt for server IP, port, and username
+    # Initialize Tkinter root for prompts
     root = tk.Tk()
     root.withdraw()
-    
+
+    # Prompt for server IP, port, and username, exit if any prompt is canceled
     server_ip = simpledialog.askstring("Server IP", "Enter IP Address of the server:", initialvalue="127.0.0.1")
-    if server_ip is None:  # Exit if "Cancel" is pressed
-        exit()
-    if server_ip is None:
-        root.destroy()
-        exit()  # Exit if "Cancel" is clicked on the IP prompt
-    
     server_port = simpledialog.askinteger("Port", "Enter Port Number of the server:", initialvalue=12345)
-    if server_port is None:  
-        exit()
-    if server_port is None:
-        root.destroy()
-        exit()  
-    
     username = simpledialog.askstring("Username", "Please enter a username:")
-    if username is None:  
-        exit()
-    if username is None:
+
+    # If any input is canceled, exit the program
+    if not all([server_ip, server_port, username]):
         root.destroy()
         exit()
 
+    # Close the prompt window as input collection is complete
     root.destroy()
 
     # Attempt initial connection
@@ -244,7 +244,7 @@ if __name__ == "__main__":
     setup_gui(root, client_ip, client_port)
     update_status("Connected", "lightgreen")
 
-    # Start the receiving thread
+    # Start the receiving thread to continuously listen for new messages from the server
     threading.Thread(target=receive_messages, daemon=True).start()
 
     # Start the GUI mainloop
