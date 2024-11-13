@@ -104,11 +104,11 @@ def start_server(ip, port):
     display_message(f"Server started on {ip}:{port}\nWaiting for clients to connect...", "System")
 
     while True:
-        client_socket, addr = server_socket.accept()
+        client_socket, _ = server_socket.accept()
         threading.Thread(target=handle_client, args=(client_socket,)).start()
 
 ''' Send server messages '''
-def send_server_message(event=None):
+def send_server_message():
     message = msg_text.get("1.0", tk.END).strip()
     if message:
         display_message(f"Server: {message}", "Server")

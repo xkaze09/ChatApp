@@ -106,14 +106,14 @@ def display_message(message, sender):
         fg="lightgray",
         font=("Helvetica", 8, "italic")
     )
-    timestamp_label.pack(anchor="e" if sender == username else "w")  # Right-align for user's own messages
+    timestamp_label.pack(anchor="e" if sender == username else "w")
 
     # Define common properties
     wrap_length = 300
     bg_color = "#3b4b67" if sender == username else "#4c5c77"
     anchor = "e" if sender == username else "w"
     justify = "right" if sender == username else "left"
-    padx = (230, 10) if sender == username else (10, 50)  # Adjust padding for right alignment
+    padx = (230, 10) if sender == username else (10, 50)
 
     # Create the message label based on sender
     message_label = tk.Label(
@@ -133,7 +133,7 @@ def display_message(message, sender):
 
     # Update the canvas to scroll to the bottom for each new message
     canvas.update_idletasks()
-    canvas.yview_moveto(1.0)  # Auto-scroll to the bottom
+    canvas.yview_moveto(1.0) 
 
 ''' Send a message to the server and display it locally '''
 def send_message():
@@ -171,7 +171,6 @@ def receive_messages():
             display_message("Connection lost. Attempting to reconnect...", "System")
             attempt_reconnect()
             break
-
 
 ''' Function to attempt reconnection '''
 def attempt_reconnect():
@@ -227,7 +226,7 @@ if __name__ == "__main__":
         exit()
     if username is None:
         root.destroy()
-        exit()  
+        exit()
 
     root.destroy()
 
