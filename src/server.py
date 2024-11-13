@@ -15,14 +15,16 @@ def add_timestamp():
     return datetime.now().strftime('%b %d, %Y - %I:%M %p')
 
 def broadcast(message, sender_socket=None):
-    with lock:
-        for client in list(clients.keys()):
-            if client != sender_socket:
-                try:
-                    client.send(message.encode('utf-8'))
-                except:
-                    client.close()
-                    del clients[client]
+    def broadcast_thread():
+        with lock:
+            for client in list(clients.keys()):
+                if client != sender_socket:
+                    try:
+                        client.send(message.encode('utf-8'))
+                    except:
+                        client.close()
+                        del clients[client]
+    threading.Thread(target=broadcast_thread, daemon=True).start()
 
 def handle_client(client_socket):
     try:
@@ -31,14 +33,14 @@ def handle_client(client_socket):
             clients[client_socket] = username
         update_online_users()
         join_message = f"{username} has joined the chat!"
-        display_message(join_message, "System")
+        display_message_thread(join_message, "System")
         broadcast(join_message, client_socket)
 
         while server_running:
             message = client_socket.recv(1024).decode('utf-8')
             if message:
                 formatted_message = f"{username}: {message}"
-                display_message(formatted_message, username)
+                display_message_thread(formatted_message, username)
                 broadcast(formatted_message, client_socket)
     except:
         pass
@@ -46,7 +48,7 @@ def handle_client(client_socket):
         with lock:
             if client_socket in clients:
                 leave_message = f"{clients[client_socket]} has left the chat."
-                display_message(leave_message, "System")
+                display_message_thread(leave_message, "System")
                 broadcast(leave_message)
                 client_socket.close()
                 del clients[client_socket]
@@ -61,6 +63,9 @@ def update_online_users():
             except:
                 client.close()
                 del clients[client]
+
+def display_message_thread(message, sender):
+    window.after(0, display_message, message, sender)
 
 def display_message(message, sender):
     message_frame = tk.Frame(scrollable_frame, bg="#263859", pady=2)
@@ -88,7 +93,7 @@ def start_server(ip, port):
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind((ip, port))
     server_socket.listen()
-    display_message(f"Server started on {ip}:{port}\nWaiting for clients to connect...", "System")
+    display_message_thread(f"Server started on {ip}:{port}\nWaiting for clients to connect...", "System")
     
     while server_running:
         try:
@@ -98,27 +103,30 @@ def start_server(ip, port):
             break  # Server socket closed, exit loop
 
 def stop_server():
-    global server_socket, server_running
-    server_running = False
-    with lock:
-        # Disconnect all clients
-        for client_socket in list(clients.keys()):
+    def stop_server_thread():
+        global server_socket, server_running
+        server_running = False
+        with lock:
+            # Disconnect all clients
+            for client_socket in list(clients.keys()):
+                try:
+                    client_socket.send("Server is shutting down.".encode('utf-8'))
+                    client_socket.close()
+                except:
+                    pass
+                del clients[client_socket]  # Remove client from list
+            window.after(0, lambda: display_message("All clients have been disconnected.", "System"))
+        
+        if server_socket:
             try:
-                client_socket.send("Server is shutting down.".encode('utf-8'))
-                client_socket.close()
+                server_socket.shutdown(socket.SHUT_RDWR)  # Gracefully close socket
             except:
                 pass
-            del clients[client_socket]  # Remove client from list
-        display_message("All clients have been disconnected.", "System")
-    
-    if server_socket:
-        try:
-            server_socket.shutdown(socket.SHUT_RDWR)  # Gracefully close socket
-        except:
-            pass
-        server_socket.close()
-        server_socket = None
-    display_message("Server stopped.", "System")
+            server_socket.close()
+            server_socket = None
+        window.after(0, lambda: display_message("Server stopped.", "System"))
+
+    threading.Thread(target=stop_server_thread, daemon=True).start()
 
 def toggle_server(ip, port, button):
     global server_running
@@ -133,12 +141,12 @@ def toggle_server(ip, port, button):
 def send_server_message(event=None):
     message = msg_text.get("1.0", tk.END).strip()
     if message:
-        display_message(f"Server: {message}", "Server")
+        display_message_thread(f"Server: {message}", "Server")
         broadcast(f"Server: {message}")
         msg_text.delete("1.0", tk.END)
 
 def setup_gui(ip, port):
-    global canvas, scrollable_frame, msg_text
+    global window, canvas, scrollable_frame, msg_text
 
     window = tk.Tk()
     window.title("Chat Server")
@@ -193,10 +201,21 @@ def setup_gui(ip, port):
     window.mainloop()
 
 if __name__ == "__main__":
+    # Prompt for server IP and port
     root = tk.Tk()
     root.withdraw()
+    
     ip = simpledialog.askstring("Server IP", "Enter IP Address for the server:", initialvalue="127.0.0.1")
+    if ip is None:
+        root.destroy()
+        exit()  # Exit if "Cancel" is clicked on the IP prompt
+    
     port = simpledialog.askinteger("Port", "Enter Port Number for the server:", initialvalue=12345)
+    if port is None:
+        root.destroy()
+        exit()  # Exit if "Cancel" is clicked on the Port prompt
+    
     root.destroy()
 
+    # Setup the GUI
     setup_gui(ip, port)
