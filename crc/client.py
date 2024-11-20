@@ -161,7 +161,7 @@ def send_message():
 
         # Compute CRC for the message
         crc = crc(binary_message)
-        message_with_crc = binary_message + crc # Append CRC
+        message_w_crc = binary_message + crc # Append CRC
 
         # Introduce a 5% chance of error
         message_w_crc = crc_functions.introduce_error(message_w_crc)
