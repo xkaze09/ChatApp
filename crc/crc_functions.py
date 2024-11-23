@@ -23,7 +23,10 @@ def mod_2_division(dividend, divisor):
     - divisor: binary string of generator
     Returns:
     - Remainder as a binary string'''
-
+    
+    print(f"Initial Dividend: {dividend}")
+    print(f"Divisor: {divisor}")
+    
     # Convert the binary string to a list for XOR
     dividend = list(dividend)
     divisor = list(divisor)
@@ -33,11 +36,12 @@ def mod_2_division(dividend, divisor):
         # Only perform XOR if the leading but is 1
         if dividend[i] == '1':
             for j in range(len_divisor):
-                # Perform XOR and store the result
-                dividend[i+j] = str(int(dividend[i+j]) ^ int(divisor[j]))
+                dividend[i + j] = str(int(dividend[i + j]) ^ int(divisor[j]))
+            print(f"Step {i}: Dividend after XOR: {''.join(dividend)}")
     
-    # Return the remainder, used as the CRC checksum
-    return ''.join(dividend[-(len_divisor -1):])  # last n-1 bits of the dividend
+    remainder = ''.join(dividend[-(len_divisor - 1):])  # Return the remainder
+    print(f"Remainder: {remainder}")
+    return remainder
 
 def crc(data, generator):
     '''
