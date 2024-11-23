@@ -40,7 +40,7 @@ def handle_client(client_socket):
         # Receive and store username
         username = client_socket.recv(1024).decode('utf-8')
         clients[client_socket] = username
-        update_online_users() # Update client list for all users
+        update_online_users()  # Update client list for all users
 
         # Notify others that a new user has joined
         join_message = f"{username} has joined the chat!"
@@ -53,24 +53,30 @@ def handle_client(client_socket):
             received_message = client_socket.recv(1024).decode('utf-8')
             if received_message:
                 # Extract sender and the actual message with CRC
-                sender, message_w_crc = received_message.split(":", 1)
+                sender, message_with_crc = received_message.split(":", 1)
+
+                print(f"Sender > {message_with_crc}")
 
                 # Validate CRC
-                if crc_functions.validate_crc(message_w_crc):
-                    # If valid, broadcast the message
-                    binary_message = message_w_crc[:-len("1101")+1]  # Remove CRC
+                generator = "10011"  # x^4 + x + 1
+                if crc_functions.validate_crc(message_with_crc, generator):
+                    # If valid, extract and decode the original message
+                    binary_message = message_with_crc[:-len(generator)+1]  # Remove CRC
                     original_message = ''.join(
                         chr(int(binary_message[i:i+8], 2)) for i in range(0, len(binary_message), 8)
                     )
+                    print("Valid: Yes")
+                    print(f"Translated: {original_message}")
                     formatted_message = f"{sender}: {original_message}"
                     display_message(formatted_message, sender)
                     broadcast(formatted_message, client_socket)
                 else:
                     # If invalid, notify sender of corruption
+                    print("Valid: No")
                     error_message = f"System: Message from {username} is corrupted!"
                     display_message(error_message, "System")
                     client_socket.send(error_message.encode('utf-8'))
-                    
+
     except:
         # Handle client disconnection and notify others
         if client_socket in clients:
