@@ -155,21 +155,28 @@ def send_message():
     global msg_entry, client_socket
     message = msg_entry.get()
     if message:
-
         # Convert the message to binary
-        binary_message =  (''.join(format(ord(x), 'b') for char in message))
+        binary_message = crc_functions.string_to_binary(message)
 
-        # Compute CRC for the message
-        crc = crc(binary_message)
-        message_w_crc = binary_message + crc # Append CRC
+        # Compute CRC for the message using the generator polynomial
+        generator = "10011"  # x^4 + x + 1
+        checksum = crc_functions.crc(binary_message, generator)
+
+        # Append CRC to the binary message
+        message_with_crc = binary_message + checksum
+
+        # Display the transmitted message in binary format
+        print(f"Sender > {message}")
+        print(f"Sent: {message_with_crc}")
 
         # Introduce a 5% chance of error
-        message_w_crc = crc_functions.introduce_error(message_w_crc)
+        message_with_crc = crc_functions.introduce_error(message_with_crc)
 
-        formatted_message = f"{username}: {message}"
-        display_message(formatted_message, username)
+        # Encode the final message to send
+        formatted_message = f"{username}:{message_with_crc}"
+        display_message(message, username)
         try:
-            client_socket.send(message.encode('utf-8'))
+            client_socket.send(formatted_message.encode('utf-8'))
         except (BrokenPipeError, OSError):
             display_message("Message not sent. Server is offline.", "System")
         msg_entry.delete(0, tk.END)
