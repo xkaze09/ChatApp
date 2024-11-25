@@ -165,25 +165,18 @@ def send_message():
         # Append CRC to the binary message
         message_with_crc = binary_message + checksum
 
-        # Display the transmitted message in binary format
-        print(f"Sender > {message}")
-        print(f"Sent: {message_with_crc}")
-
         # Introduce a 5% chance of error
         message_with_crc = crc_functions.introduce_error(message_with_crc)
 
         # Encode the final message to send
         formatted_message = f"{username}:{message_with_crc}"
 
-        # Ensure message sending occurs in a separate thread to prevent blocking
-        def send_in_thread():
-            try:
-                client_socket.send(formatted_message.encode('utf-8'))
-                display_message(message, username)
-            except (BrokenPipeError, OSError):
-                display_message("Message not sent. Server is offline.", "System")
-
-        threading.Thread(target=send_in_thread, daemon=True).start()
+        try:
+            client_socket.send(formatted_message.encode('utf-8'))
+            display_message(message, username)
+        except Exception as e:
+            display_message(f"Failed to send message. Error: {e}", "System")
+            update_status("Disconnected", "red")
         msg_entry.delete(0, tk.END)
 
 def receive_messages():
@@ -193,26 +186,29 @@ def receive_messages():
             message = client_socket.recv(1024).decode('utf-8')
             if message:
                 # Check if message is an online users list
-                if all(part.isalpha() or part.isnumeric() for part in message.split(",")):
+                if all(part.isalnum() for part in message.split(",")):
                     users = message.split(",")
                     update_online_users(users)
                 else:
-                    # Display regular message
-                    sender, content = message.split(":", 1)
-                    if crc_functions.validate_crc(content, "10011"):
-                        binary_message = content[:-4]
-                        original_message = ''.join(
-                            chr(int(binary_message[i:i + 8], 2)) for i in range(0, len(binary_message), 8)
-                        )
-                        display_message(original_message, sender)
-                    else:
-                        display_message("Received a corrupted message.", "System")
-        except (ConnectionResetError, OSError):
+                    # Process regular messages
+                    try:
+                        sender, content = message.split(":", 1)
+                        if crc_functions.validate_crc(content, "10011"):
+                            binary_message = content[:-4]
+                            original_message = ''.join(
+                                chr(int(binary_message[i:i + 8], 2)) for i in range(0, len(binary_message), 8)
+                            )
+                            display_message(original_message, sender)
+                        else:
+                            display_message(f"Corrupted message from {sender}.", "System")
+                    except ValueError:
+                        display_message("Malformed message received.", "System")
+        except Exception as e:
             update_status("Reconnecting...", "orange")
-            display_message("Connection lost. Attempting to reconnect...", "System")
+            display_message(f"Connection lost. Error: {e}. Retrying...", "System")
             attempt_reconnect()
             break
-
+        
 def attempt_reconnect():
     ''' Function to attempt reconnection '''
     global client_socket

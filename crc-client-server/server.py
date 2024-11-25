@@ -56,40 +56,30 @@ def handle_client(client_socket):
         # Continuously listen for messages from the client
         while True:
             try:
-                # Receive message with CRC
                 received_message = client_socket.recv(1024).decode('utf-8')
                 if received_message:
-                    # Extract sender and the actual message with CRC
                     sender, message_with_crc = received_message.split(":", 1)
+                    generator = "10011"
 
-                    print(f"Sender > {message_with_crc}")
-
-                    # Validate CRC
-                    generator = "10011"  # x^4 + x + 1
                     if crc_functions.validate_crc(message_with_crc, generator):
-                        # If valid, extract and decode the original message
-                        binary_message = message_with_crc[:-len(generator)+1]  # Remove CRC
+                        binary_message = message_with_crc[:-4]
                         original_message = ''.join(
-                            chr(int(binary_message[i:i+8], 2)) for i in range(0, len(binary_message), 8)
+                            chr(int(binary_message[i:i + 8], 2)) for i in range(0, len(binary_message), 8)
                         )
-                        print("Valid: Yes")
-                        print(f"Translated: {original_message}")
                         formatted_message = f"{sender}: {original_message}"
                         display_message(formatted_message, sender)
                         broadcast(formatted_message, client_socket)
                     else:
-                        # If invalid, notify sender of corruption
-                        print("Valid: No")
-                        error_message = f"System: Message from {username} is corrupted!"
+                        error_message = f"Corrupted message from {sender}."
                         display_message(error_message, "System")
-                        client_socket.send(error_message.encode('utf-8'))
-            except (BrokenPipeError, ConnectionResetError):
-                print(f"{username} disconnected.")
+                        client_socket.send(f"System:{error_message}".encode('utf-8'))
+            except Exception as e:
+                display_message(f"Error processing message: {e}", "System")
                 break
     except Exception as e:
-        print(f"Error handling client: {e}")
+        display_message(f"Client handler error: {e}", "System")
     finally:
-        # Cleanup and notify others when a client disconnects
+        # Cleanup on disconnection
         if client_socket in clients:
             leave_message = f"{clients[client_socket]} has left the chat."
             display_message(leave_message, "System")
