@@ -46,7 +46,7 @@ def handle_client(client_socket):
         # Receive and store username
         username = client_socket.recv(1024).decode('utf-8')
         clients[client_socket] = username
-        update_online_users()  # Update client list for all users
+        update_online_users()
 
         # Notify others that a new user has joined
         join_message = f"{username} has joined the chat!"
@@ -59,25 +59,27 @@ def handle_client(client_socket):
                 received_message = client_socket.recv(1024).decode('utf-8')
                 if received_message:
                     sender, message_with_crc = received_message.split(":", 1)
-                    generator = "10011"  # x^4 + x + 1
+                    generator = "10011"
 
                     if crc_functions.validate_crc(message_with_crc, generator):
-                        binary_message = message_with_crc[:-4]  # Remove the last 4 bits (CRC)
+                        binary_message = message_with_crc[:-4]
                         original_message = ''.join(
                             chr(int(binary_message[i:i + 7], 2)) for i in range(0, len(binary_message), 7)
                         )
                         formatted_message = f"{sender}: {original_message}"
-                        display_message(formatted_message, sender)
+
+                        # Display validation details on server side
+                        display_message(f"Valid Message\nSender > {binary_message}\nValid: Yes\nTranslated: {original_message}", sender)
                         broadcast(formatted_message, client_socket)
                     else:
-                        error_message = f"Corrupted message received from {sender}."
-                        display_message(error_message, "System")
+                        error_message = f"Invalid Message\nSender > {message_with_crc}\nValid: No"
+                        display_message(error_message, sender)
                         client_socket.send(f"System:{error_message}".encode('utf-8'))
-            except Exception as e:
-                display_message(f"Error processing message: {e}", "System")
+            except (BrokenPipeError, ConnectionResetError):
+                print(f"{username} disconnected.")
                 break
     except Exception as e:
-        display_message(f"Client handler error: {e}", "System")
+        print(f"Error handling client: {e}")
     finally:
         # Cleanup on disconnection
         if client_socket in clients:
@@ -87,6 +89,7 @@ def handle_client(client_socket):
             del clients[client_socket]
             client_socket.close()
             update_online_users()
+
 
 def update_online_users():
     ''' Send the updated list of online users to all clients '''

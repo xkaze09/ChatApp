@@ -172,12 +172,17 @@ def send_message():
         formatted_message = f"{username}:{message_with_crc}"
 
         try:
+            # Send message to server
             client_socket.send(formatted_message.encode('utf-8'))
-            display_message(message, username)
+
+            # Display message details on the sender's side
+            display_message(f"Sender > {message}", username)
+            display_message(f"Sent: {message_with_crc}", "System")
         except Exception as e:
             display_message(f"Failed to send message. Error: {e}", "System")
             update_status("Disconnected", "red")
         msg_entry.delete(0, tk.END)
+
 
 def receive_messages():
     ''' Handle receiving messages from the server '''
@@ -185,29 +190,30 @@ def receive_messages():
         try:
             message = client_socket.recv(1024).decode('utf-8')
             if message:
-                # Check if the message is an online users list
+                # Check if message is an online users list
                 if all(part.isalnum() for part in message.split(",")):
                     users = message.split(",")
                     update_online_users(users)
                 else:
-                    # Process regular messages
                     try:
                         sender, content = message.split(":", 1)
                         if crc_functions.validate_crc(content, "10011"):
-                            binary_message = content[:-4] # Remove the last 4 bits (CRC)
+                            binary_message = content[:-4]
                             original_message = ''.join(
                                 chr(int(binary_message[i:i + 7], 2)) for i in range(0, len(binary_message), 7)
                             )
-                            display_message(original_message, sender)
+                            # Display validation details
+                            display_message(f"Valid Message\nSender > {binary_message}\nValid: Yes\nTranslated: {original_message}", sender)
                         else:
-                            display_message(f"Corrupted message received from {sender}.", "System")
+                            display_message(f"Invalid Message\nSender > {content}\nValid: No", "System")
                     except ValueError:
                         display_message("Malformed message received.", "System")
-        except Exception as e:
+        except (ConnectionResetError, OSError):
             update_status("Reconnecting...", "orange")
-            display_message(f"Connection lost. Error: {e}. Retrying...", "System")
+            display_message("Connection lost. Attempting to reconnect...", "System")
             attempt_reconnect()
             break
+
 
         
 def attempt_reconnect():
