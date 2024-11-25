@@ -3,7 +3,7 @@ Authors: Kristina Celis & Christian Salinas
 
 Description: server.py implements the server-side functionality
 of the chat app. It listens for incoming client connections, 
-handle client messages,and broadcast these messages to other 
+handles client messages, and broadcasts these messages to other 
 clients in real-time.
 '''
 
@@ -13,7 +13,7 @@ import threading
 from datetime import datetime
 import tkinter as tk
 from tkinter import simpledialog
-import crc_functions
+import crc_functions  # Import the CRC functions
 
 # Dictionary to keep track of connected clients with their usernames
 clients = {}
@@ -28,52 +28,74 @@ def broadcast(message, sender_socket=None):
     for client in list(clients.keys()):
         if client != sender_socket:
             try:
-                client.send(message.encode('utf-8'))
-            except:
+                # Ensure the message has the correct format
+                if ":" in message:
+                    client.send(message.encode('utf-8'))
+                else:
+                    print(f"Invalid message format: {message}")
+            except Exception as e:
+                print(f"Error broadcasting to a client: {e}")
                 client.close()
-                del clients[client] # Remove disconnected clients
+                del clients[client]
+
 
 # CLIENT HANDLER FUNCTIONS
-# Updated handle_client() function to decode 7-bit binary messages
 def handle_client(client_socket):
     ''' Handles communication with a connected client '''
     try:
+        # Receive and store username
         username = client_socket.recv(1024).decode('utf-8')
         clients[client_socket] = username
-        update_online_users()
+        update_online_users()  # Update client list for all users
 
+        # Notify others that a new user has joined
         join_message = f"{username} has joined the chat!"
         display_message(join_message, "System")
         broadcast(join_message, client_socket)
 
+        # Continuously listen for messages from the client
         while True:
-            received_message = client_socket.recv(1024).decode('utf-8')
-            if received_message:
-                sender, message_with_crc = received_message.split(":", 1)
-                print(f"Sender > {message_with_crc}")
-                generator = "10011"
-                if crc_functions.validate_crc(message_with_crc, generator):
-                    binary_message = message_with_crc[:-len(generator)+1]
-                    original_message = ''.join(
-                        chr(int(binary_message[i:i+7], 2)) for i in range(0, len(binary_message), 7)
-                    )
-                    print("Valid: Yes")
-                    print(f"Translated: {original_message}")
-                    formatted_message = f"{sender}: {original_message}"
-                    display_message(formatted_message, sender)
-                    broadcast(formatted_message, client_socket)
-                else:
-                    print("Valid: No")
-                    error_message = f"System: Message from {username} is corrupted!"
-                    display_message(error_message, "System")
-                    client_socket.send(error_message.encode('utf-8'))
-    except:
+            try:
+                # Receive message with CRC
+                received_message = client_socket.recv(1024).decode('utf-8')
+                if received_message:
+                    # Extract sender and the actual message with CRC
+                    sender, message_with_crc = received_message.split(":", 1)
+
+                    print(f"Sender > {message_with_crc}")
+
+                    # Validate CRC
+                    generator = "10011"  # x^4 + x + 1
+                    if crc_functions.validate_crc(message_with_crc, generator):
+                        # If valid, extract and decode the original message
+                        binary_message = message_with_crc[:-len(generator)+1]  # Remove CRC
+                        original_message = ''.join(
+                            chr(int(binary_message[i:i+8], 2)) for i in range(0, len(binary_message), 8)
+                        )
+                        print("Valid: Yes")
+                        print(f"Translated: {original_message}")
+                        formatted_message = f"{sender}: {original_message}"
+                        display_message(formatted_message, sender)
+                        broadcast(formatted_message, client_socket)
+                    else:
+                        # If invalid, notify sender of corruption
+                        print("Valid: No")
+                        error_message = f"System: Message from {username} is corrupted!"
+                        display_message(error_message, "System")
+                        client_socket.send(error_message.encode('utf-8'))
+            except (BrokenPipeError, ConnectionResetError):
+                print(f"{username} disconnected.")
+                break
+    except Exception as e:
+        print(f"Error handling client: {e}")
+    finally:
+        # Cleanup and notify others when a client disconnects
         if client_socket in clients:
             leave_message = f"{clients[client_socket]} has left the chat."
             display_message(leave_message, "System")
             broadcast(leave_message)
-            client_socket.close()
             del clients[client_socket]
+            client_socket.close()
             update_online_users()
 
 def update_online_users():
@@ -94,16 +116,41 @@ def start_server(ip, port):
     server_socket.listen()
     display_message(f"Server started on {ip}:{port}\nWaiting for clients to connect...", "System")
 
-    while True:
-        client_socket, _ = server_socket.accept()
-        threading.Thread(target=handle_client, args=(client_socket,)).start()
+    try:
+        while True:
+            client_socket, _ = server_socket.accept()
+            threading.Thread(target=handle_client, args=(client_socket,), daemon=True).start()
+    except KeyboardInterrupt:
+        print("Server shutting down.")
+    finally:
+        server_socket.close()
 
 def send_server_message():
-    ''' Send server messages to all clients'''
+    ''' Send server messages to all clients '''
+    global msg_text
     message = msg_text.get("1.0", tk.END).strip()
     if message:
-        display_message(f"Server: {message}", "Server")
-        broadcast(f"Server: {message}")
+        # Convert server message to binary
+        binary_message = crc_functions.string_to_binary(message)
+
+        # Compute CRC for the message using the generator polynomial
+        generator = "10011"  # x^4 + x + 1
+        checksum = crc_functions.crc(binary_message, generator)
+
+        # Append CRC to the binary message
+        message_with_crc = binary_message + checksum
+
+        # Introduce a 5% chance of error
+        message_with_crc = crc_functions.introduce_error(message_with_crc)
+
+        # Log the transmitted message for debugging
+        print(f"Server > {message}")
+        print(f"Sent: {message_with_crc}")
+
+        # Encode the message with CRC and broadcast it
+        formatted_message = f"Server:{message_with_crc}"
+        display_message(message, "Server")
+        broadcast(formatted_message)
         msg_text.delete("1.0", tk.END)
 
 # GUI DISPLAY FUNCTIONS
@@ -154,7 +201,7 @@ def setup_gui(ip, port):
     canvas = tk.Canvas(chat_frame, bg="#263859", borderwidth=0, highlightthickness=0)
     scrollbar = tk.Scrollbar(chat_frame, orient="vertical", command=canvas.yview)
     scrollable_frame = tk.Frame(canvas, bg="#263859")
-    scrollable_frame.bind("<Configure>",lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+    scrollable_frame.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
 
     canvas.create_window((0, 0), window=scrollable_frame, anchor="nw", width=460)
     canvas.configure(yscrollcommand=scrollbar.set)
