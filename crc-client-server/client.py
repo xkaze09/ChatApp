@@ -185,7 +185,7 @@ def receive_messages():
         try:
             message = client_socket.recv(1024).decode('utf-8')
             if message:
-                # Check if message is an online users list
+                # Check if the message is an online users list
                 if all(part.isalnum() for part in message.split(",")):
                     users = message.split(",")
                     update_online_users(users)
@@ -194,13 +194,13 @@ def receive_messages():
                     try:
                         sender, content = message.split(":", 1)
                         if crc_functions.validate_crc(content, "10011"):
-                            binary_message = content[:-4]
+                            binary_message = content[:-4] # Remove the last 4 bits (CRC)
                             original_message = ''.join(
-                                chr(int(binary_message[i:i + 8], 2)) for i in range(0, len(binary_message), 8)
+                                chr(int(binary_message[i:i + 7], 2)) for i in range(0, len(binary_message), 7)
                             )
                             display_message(original_message, sender)
                         else:
-                            display_message(f"Corrupted message from {sender}.", "System")
+                            display_message(f"Corrupted message received from {sender}.", "System")
                     except ValueError:
                         display_message("Malformed message received.", "System")
         except Exception as e:
@@ -208,6 +208,7 @@ def receive_messages():
             display_message(f"Connection lost. Error: {e}. Retrying...", "System")
             attempt_reconnect()
             break
+
         
 def attempt_reconnect():
     ''' Function to attempt reconnection '''

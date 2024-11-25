@@ -36,9 +36,14 @@ def crc(data, generator):
 
 def validate_crc(received_msg, generator):
     ''' Validate CRC of a received message '''
-    data, received_crc = received_msg[:-len(generator)+1], received_msg[-len(generator)+1:]
-    computed_crc = crc(data, generator)
-    return received_crc == computed_crc
+    try:
+        data, received_crc = received_msg[:-len(generator) + 1], received_msg[-len(generator) + 1:]
+        computed_crc = crc(data, generator)
+        return received_crc == computed_crc
+    except Exception as e:
+        print(f"CRC validation failed: {e}")
+        return False
+
 
 def introduce_error(msg, error_chance=5):
     ''' Introduce a 5% chance of adding 1 bit to T(X) '''

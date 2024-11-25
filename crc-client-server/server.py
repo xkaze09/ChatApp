@@ -59,18 +59,18 @@ def handle_client(client_socket):
                 received_message = client_socket.recv(1024).decode('utf-8')
                 if received_message:
                     sender, message_with_crc = received_message.split(":", 1)
-                    generator = "10011"
+                    generator = "10011"  # x^4 + x + 1
 
                     if crc_functions.validate_crc(message_with_crc, generator):
-                        binary_message = message_with_crc[:-4]
+                        binary_message = message_with_crc[:-4]  # Remove the last 4 bits (CRC)
                         original_message = ''.join(
-                            chr(int(binary_message[i:i + 8], 2)) for i in range(0, len(binary_message), 8)
+                            chr(int(binary_message[i:i + 7], 2)) for i in range(0, len(binary_message), 7)
                         )
                         formatted_message = f"{sender}: {original_message}"
                         display_message(formatted_message, sender)
                         broadcast(formatted_message, client_socket)
                     else:
-                        error_message = f"Corrupted message from {sender}."
+                        error_message = f"Corrupted message received from {sender}."
                         display_message(error_message, "System")
                         client_socket.send(f"System:{error_message}".encode('utf-8'))
             except Exception as e:
