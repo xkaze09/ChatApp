@@ -105,13 +105,13 @@ def setup_gui(root, client_ip, client_port):
     send_button.bind("<Enter>", lambda e: send_button.config(bg="#596985"))
     send_button.bind("<Leave>", lambda e: send_button.config(bg="#4c5c77"))
 
-def display_message(message, sender):
+def display_message(message, sender, sent_bits=None):
     ''' Display a message in the chat display area '''
     global canvas, scrollable_frame
 
-    # Create message frame in the scrollable area
+    # Create a message frame in the scrollable area
     message_frame = tk.Frame(scrollable_frame, bg="#263859", pady=5)
-    
+
     # Display timestamp label
     timestamp_label = tk.Label(
         message_frame,
@@ -121,15 +121,19 @@ def display_message(message, sender):
         font=("Helvetica", 8, "italic")
     )
     timestamp_label.pack(anchor="e" if sender == username else "w")
-
-    # Define common properties
-    wrap_length = 300
+    
+    # Define properties for the chat bubble
     bg_color = "#3b4b67" if sender == username else "#4c5c77"
     anchor = "e" if sender == username else "w"
+    padx = (30, 10) if sender == username else (10, 50)
     justify = "right" if sender == username else "left"
-    padx = (230, 10) if sender == username else (10, 50)
 
-    # Create the message label based on sender
+
+    # Dynamically calculate wrap length based on canvas width
+    chat_width = canvas.winfo_width()
+    wrap_length = chat_width - 100
+
+    # Create the chat bubble label
     message_label = tk.Label(
         message_frame,
         text=message,
@@ -138,16 +142,15 @@ def display_message(message, sender):
         font=("Helvetica", 10),
         padx=10,
         pady=5,
-        wraplength=wrap_length,
-        anchor=anchor,
+        wraplength=wrap_length, 
         justify=justify
     )
-    message_label.pack(anchor=anchor)
+    message_label.pack(anchor=anchor, fill="x", expand=True)
     message_frame.pack(anchor=anchor, fill="x", padx=padx, pady=5)
 
     # Update the canvas to scroll to the bottom for each new message
     canvas.update_idletasks()
-    canvas.yview_moveto(1.0) 
+    canvas.yview_moveto(1.0)
 
 # CLIENT FUNCTIONS
 def send_message():
@@ -176,8 +179,9 @@ def send_message():
             client_socket.send(formatted_message.encode('utf-8'))
 
             # Display message details on the sender's side
-            display_message(f"Sender > {message}", username)
-            display_message(f"Sent: {message_with_crc}", "System")
+            full_message = f"Sender > {message}\nSent bits: {message_with_crc}"
+            display_message(full_message, username)
+            
         except Exception as e:
             display_message(f"Failed to send message. Error: {e}", "System")
             update_status("Disconnected", "red")
@@ -188,34 +192,56 @@ def receive_messages():
     ''' Handle receiving messages from the server '''
     while True:
         try:
+            # Receive a message from the server
             message = client_socket.recv(1024).decode('utf-8')
-            if message:
-                # Check if message is an online users list
-                if all(part.isalnum() for part in message.split(",")):
-                    users = message.split(",")
-                    update_online_users(users)
+            if not message:
+                continue
+
+            # Check if the message is an online users list
+            if all(part.isalnum() for part in message.split(",")):
+                users = message.split(",")
+                update_online_users(users)
+                continue
+
+            # Check if the message is a system message (starts with "System:")
+            if message.startswith("System:"):
+                system_message = message.split("System:", 1)[1].strip()
+                display_message(f"System: {system_message}", "System")
+                continue
+
+            # Process messages with a sender and CRC content
+            if ":" in message:
+                sender, message_with_crc = message.split(":", 1)
+                generator = "10011"  # CRC generator polynomial
+
+                # Validate the CRC
+                if crc_functions.validate_crc(message_with_crc, generator):
+                    binary_message = message_with_crc[:-4]  # Remove the CRC bits
+                    original_message = ''.join(
+                        chr(int(binary_message[i:i + 7], 2)) for i in range(0, len(binary_message), 7)
+                    )
+                    # Display valid message
+                    display_message(f"{sender} > {message_with_crc}\nValid: Yes\nTranslated: {original_message}", sender)
                 else:
-                    try:
-                        sender, content = message.split(":", 1)
-                        if crc_functions.validate_crc(content, "10011"):
-                            binary_message = content[:-4]
-                            original_message = ''.join(
-                                chr(int(binary_message[i:i + 7], 2)) for i in range(0, len(binary_message), 7)
-                            )
-                            # Display validation details
-                            display_message(f"Valid Message\nSender > {binary_message}\nValid: Yes\nTranslated: {original_message}", sender)
-                        else:
-                            display_message(f"Invalid Message\nSender > {content}\nValid: No", "System")
-                    except ValueError:
-                        display_message("Malformed message received.", "System")
+                    # Handle invalid CRC
+                    display_message(f"{sender} > {message_with_crc}\nValid: No", "System")
+            else:
+                # Handle malformed messages (no colon or unexpected format)
+                display_message("Malformed message received.", "System")
+
         except (ConnectionResetError, OSError):
+            # Handle disconnection gracefully
             update_status("Reconnecting...", "orange")
             display_message("Connection lost. Attempting to reconnect...", "System")
             attempt_reconnect()
             break
+        except Exception as e:
+            # Log unexpected errors for debugging
+            print(f"Unexpected error: {e}")
+            display_message("An error occurred while processing the message.", "System")
 
 
-        
+
 def attempt_reconnect():
     ''' Function to attempt reconnection '''
     global client_socket

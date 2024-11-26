@@ -29,12 +29,6 @@ def mod_2_division(dividend, divisor):
     Returns: str: remainder after mod 2 division
     '''
 
-    # Input validation for binary strings
-    if not all (bit in '01' for bit in dividend) or not all(bit in '01' for bit in divisor):
-        raise ValueError("Both dividend and divisor must be binary strings")
-    if len(divisor) == 0:
-        raise ValueError("Divisor cannot be empty")
-    
     logging.debug(f"Initial Dividend: {dividend}")
     logging.debug(f"Divisor: {divisor}")
 

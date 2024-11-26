@@ -69,12 +69,16 @@ def handle_client(client_socket):
                         formatted_message = f"{sender}: {original_message}"
 
                         # Display validation details on server side
-                        display_message(f"Valid Message\nSender > {binary_message}\nValid: Yes\nTranslated: {original_message}", sender)
+                        display_message(f"{sender} > {message_with_crc}\nValid: Yes\nTranslated: {original_message}", sender)
                         broadcast(formatted_message, client_socket)
                     else:
-                        error_message = f"Invalid Message\nSender > {message_with_crc}\nValid: No"
-                        display_message(error_message, sender)
-                        client_socket.send(f"System:{error_message}".encode('utf-8'))
+                       # Notify the sender that the message is invalid
+                        error_message = "Message sent was invalid. Please check and resend."
+                        client_socket.send(f"System: {error_message}".encode('utf-8'))
+
+                        # Log the invalid message on the server GUI
+                        display_message(f"{sender} > {message_with_crc}\nValid: No", "System")
+
             except (BrokenPipeError, ConnectionResetError):
                 print(f"{username} disconnected.")
                 break
@@ -121,7 +125,7 @@ def start_server(ip, port):
 def send_server_message():
     ''' Send server messages to all clients '''
     global msg_text
-    message = msg_text.get("1.0", tk.END).strip()
+    message = msg_text.get("1.0", tk.END).strip()  # Retrieve the message from the text input
     if message:
         # Convert server message to binary
         binary_message = crc_functions.string_to_binary(message)
@@ -142,30 +146,59 @@ def send_server_message():
 
         # Encode the message with CRC and broadcast it
         formatted_message = f"Server:{message_with_crc}"
-        display_message(message, "Server")
-        broadcast(formatted_message)
-        msg_text.delete("1.0", tk.END)
+
+        # Display the message in the server's GUI with sent bits
+        display_message(
+            f"Server > {message}\nSent bits: {message_with_crc}", "Server"
+        )
+        broadcast(formatted_message)  # Broadcast the message to all clients
+        msg_text.delete("1.0", tk.END)  # Clear the input box
+
 
 # GUI DISPLAY FUNCTIONS
 def display_message(message, sender):
     ''' Display messages in the GUI '''
     message_frame = tk.Frame(scrollable_frame, bg="#263859", pady=2)
     
-    timestamp_label = tk.Label(message_frame, text=add_timestamp(), bg="#263859", fg="lightgray", font=("Helvetica", 8, "italic"))
+    timestamp_label = tk.Label(
+        message_frame,
+        text=add_timestamp(),
+        bg="#263859",
+        fg="lightgray",
+        font=("Helvetica", 8, "italic")
+    )
     timestamp_label.pack(anchor="e" if sender == "Server" else "w")
 
-    if sender == "Server":
-        message_label = tk.Label(message_frame, text=message, bg="#3b4b67", fg="white", font=("Helvetica", 10), padx=10, pady=5)
-        message_label.pack(anchor="e")
-        message_frame.pack(anchor="e", fill="x", pady=5)
-    else:
-        message_label = tk.Label(message_frame, text=message, bg="#4c5c77", fg="white", font=("Helvetica", 10), padx=10, pady=5)
-        message_label.pack(anchor="w")
-        message_frame.pack(anchor="w", fill="x", padx=(10, 230), pady=5)
+    chat_width = canvas.winfo_width() - 20
+    wrap_length = chat_width - 50  
+    
+    # Set message bubble properties
+    bg_color = "#3b4b67" if sender == "Server" else "#4c5c77"
+    anchor = "e" if sender == "Server" else "w"
+    justify = "left"
+    padx = (50, 10) if sender == "Server" else (10, 50)
 
-    # Update the canvas to scroll to the bottom for each new message
+    # Create the chat bubble
+    message_label = tk.Label(
+        message_frame,
+        text=message,
+        bg=bg_color,
+        fg="white",
+        font=("Helvetica", 10),
+        padx=10,
+        pady=5,
+        wraplength=wrap_length, 
+        anchor="w",
+        justify=justify,
+    )
+    message_label.pack(anchor=anchor, fill="x")
+
+    # Add the message frame to the scrollable area
+    message_frame.pack(anchor=anchor, fill="x", padx=padx, pady=5)
+
+    # Scroll to the bottom after each new message
     canvas.update_idletasks()
-    canvas.yview_moveto(1.0) 
+    canvas.yview_moveto(1.0)
 
 def setup_gui(ip, port):
     ''' Setting up the server GUI '''
